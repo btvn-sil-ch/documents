@@ -1,0 +1,215 @@
+/* Global content typography for the custom BioTuring theme */
+
+:root {
+  --bt-brand: #3b82f6;
+  --bt-brand-soft: #dbeafe;
+  --bt-text: #1f2328;
+  --bt-text-soft: #57606a;
+  --bt-border: #d8dee4;
+  --bt-bg-mute: #ebedf0;
+  --bt-bg-soft: #f7f8fa;
+  --bt-bg: #ffffff;
+  --bt-code-bg: #f6f8fa;
+  --bt-code-text: #24292f;
+  --bt-scrollbar-thumb: rgba(120, 130, 140, 0.35);
+  --bt-scrollbar-thumb-hover: rgba(120, 130, 140, 0.55);
+}
+
+.dark {
+  --bt-brand: #58a6ff;
+  --bt-brand-soft: #1f2a40;
+  --bt-text: #e6edf3;
+  --bt-text-soft: #8b949e;
+  --bt-border: #30363d;
+  --bt-bg-mute: #21262d;
+  --bt-bg-soft: #161b22;
+  --bt-bg: #0d1117;
+  --bt-code-bg: #161b22;
+  --bt-code-text: #e6edf3;
+  --bt-scrollbar-thumb: rgba(139, 148, 158, 0.3);
+  --bt-scrollbar-thumb-hover: rgba(139, 148, 158, 0.5);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ---- Custom scrollbars (thin & soft) ---- */
+/* WebKit / Blink */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--bt-scrollbar-thumb) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--bt-scrollbar-thumb);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--bt-scrollbar-thumb-hover);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+body {
+  margin: 0;
+  background: var(--bt-bg);
+  color: var(--bt-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--bt-brand);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Markdown content styling */
+.bt-content :where(h1, h2, h3, h4, h5, h6) {
+  margin-top: 0.8em;
+  margin-bottom: 0.6em;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--bt-text);
+}
+
+/* Headings are scrolled to via custom JS (see Layout.vue onTocClick) which
+   accounts for the 56px sticky header, so no scroll-margin-top is needed. */
+.bt-content h1,
+.bt-content h2,
+.bt-content h3,
+.bt-content h4,
+.bt-content h5,
+.bt-content h6 {
+  scroll-margin-top: 0;
+}
+
+.bt-content h1 {
+  font-size: 2em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--bt-border);
+}
+
+.bt-content h2 {
+  font-size: 1.5em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--bt-border);
+}
+
+.bt-content h3 { font-size: 1.25em; }
+.bt-content h4 { font-size: 1em; }
+
+.bt-content p {
+  margin: 1em 0;
+}
+
+.bt-content ul,
+.bt-content ol {
+  padding-left: 1.5em;
+  margin: 1em 0;
+}
+
+.bt-content li {
+  margin: 0.4em 0;
+}
+
+.bt-content blockquote {
+  margin: 1em 0;
+  padding: 0.6em 1em;
+  border-left: 4px solid var(--bt-brand);
+  background: var(--bt-bg-soft);
+  border-radius: 0 6px 6px 0;
+  color: var(--bt-text-soft);
+}
+
+.bt-content :where(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.2em 0;
+  font-size: 14px;
+  display: block;
+  overflow-x: auto;
+}
+
+.bt-content th,
+.bt-content td {
+  padding: 10px 14px;
+  border: 1px solid var(--bt-border);
+  text-align: left;
+}
+
+.bt-content th {
+  background: var(--bt-bg-soft);
+  font-weight: 600;
+}
+
+.bt-content tr:nth-child(even) td {
+  background: var(--bt-bg-soft);
+}
+
+/* Inline code */
+.bt-content :not(pre) > code {
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 0.9em;
+  background: var(--bt-code-bg);
+  color: var(--bt-code-text);
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+/* Code blocks */
+.bt-content pre {
+  margin: 1.2em 0;
+  padding: 16px 18px;
+  border-radius: 8px;
+  background: var(--bt-code-bg);
+  overflow-x: auto;
+  border: 1px solid var(--bt-border);
+}
+
+.bt-content pre code {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--bt-code-text);
+  background: transparent;
+  padding: 0;
+}
+
+/* Horizontal rule */
+.bt-content hr {
+  border: none;
+  border-top: 1px solid var(--bt-border);
+  margin: 2em 0;
+}
+
+/* Images */
+.bt-content img {
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--bt-border);
+}
