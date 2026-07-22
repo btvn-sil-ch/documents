@@ -99,15 +99,32 @@ const pageTitle = computed(() => {
   return match ? match.text : 'Docs';
 });
 
-const activeSlug = ref('');
+// Scroll-spy and click highlights are tracked separately so that clicking a
+// TOC entry keeps that entry highlighted until the reader scrolls again,
+// instead of being overridden by the scroll position right after the
+// smooth-scroll animation settles.
+const scrollActiveSlug = ref('');
+const clickedSlug = ref('');
+const activeSlug = computed(() => clickedSlug.value || scrollActiveSlug.value);
 
 let suppressScrollSpy = false;
 let suppressTimer: ReturnType<typeof setTimeout> | null = null;
+// After a click-driven smooth scroll settles, the next real (user) scroll
+// event should drop the click highlight and hand control back to scroll-spy.
+let waitingForUserScroll = false;
 
 const SCROLL_OFFSET = 56;
 
 function onTocScroll() {
   if (suppressScrollSpy) return;
+
+  // The first scroll event after a click settles is a genuine user scroll:
+  // drop the click highlight and let scroll-spy take over again.
+  if (waitingForUserScroll) {
+    clickedSlug.value = '';
+    waitingForUserScroll = false;
+  }
+
   const items = currentToc.value;
   const headings = items
     .map((t) => {
@@ -119,7 +136,7 @@ function onTocScroll() {
     .filter((x): x is { link: string; el: HTMLElement } => x !== null);
 
   if (!headings.length) {
-    activeSlug.value = '';
+    scrollActiveSlug.value = '';
     return;
   }
 
@@ -144,7 +161,7 @@ function onTocScroll() {
     current = headings[headings.length - 1].link;
   }
 
-  activeSlug.value = current;
+  scrollActiveSlug.value = current;
 }
 
 onMounted(() => {
@@ -157,7 +174,8 @@ watch(
   () => route.path,
   () => {
     sidebarOpen.value = false;
-    activeSlug.value = '';
+    scrollActiveSlug.value = '';
+    clickedSlug.value = '';
     nextTick(() => {
       buildTocFromDom();
       requestAnimationFrame(onTocScroll);
@@ -174,7 +192,8 @@ function onTocClick(e: Event, link: string) {
   e.preventDefault();
   e.stopImmediatePropagation();
 
-  activeSlug.value = link;
+  clickedSlug.value = link;
+  waitingForUserScroll = false;
   suppressScrollSpy = true;
   if (suppressTimer) clearTimeout(suppressTimer);
 
@@ -190,8 +209,12 @@ function onTocClick(e: Event, link: string) {
   history.replaceState(null, '', link);
 
   suppressTimer = setTimeout(() => {
+    // Smooth scroll has settled: refresh the scroll-spy baseline (the click
+    // highlight still wins via `activeSlug`) and arm the flag so the next real
+    // scroll hands control back to scroll-spy.
     suppressScrollSpy = false;
     onTocScroll();
+    waitingForUserScroll = true;
   }, 500);
 }
 </script>
