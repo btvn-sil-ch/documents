@@ -13,6 +13,10 @@
   --bt-code-text: #24292f;
   --bt-scrollbar-thumb: rgba(120, 130, 140, 0.35);
   --bt-scrollbar-thumb-hover: rgba(120, 130, 140, 0.55);
+
+  /* Code-block copy-button icons (reused from VitePress defaults) */
+  --vp-icon-copy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='rgba(128,128,128,1)' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' viewBox='0 0 24 24'%3E%3Crect width='8' height='4' x='8' y='2' rx='1' ry='1'/%3E%3Cpath d='M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2'/%3E%3C/svg%3E");
+  --vp-icon-copied: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='rgba(128,128,128,1)' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' viewBox='0 0 24 24'%3E%3Crect width='8' height='4' x='8' y='2' rx='1' ry='1'/%3E%3Cpath d='M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2'/%3E%3Cpath d='m9 14 2 2 4-4'/%3E%3C/svg%3E");
 }
 
 .dark {
@@ -181,14 +185,169 @@ a:hover {
   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 }
 
-/* Code blocks */
-.bt-content pre {
+/* ------------------------------------------------------------------
+   Code blocks
+   ------------------------------------------------------------------
+   VitePress wraps fenced code in:
+     <div class="language-xxx vp-adaptive-theme">
+       <button class="copy" title="Copy Code"></button>
+       <span class="lang">xxx</span>
+       <pre class="shiki ... vp-code"><code>...<span style="--shiki-light;--shiki-dark">..</span>...</code></pre>
+     </div>
+   This custom theme replaces VitePress's default stylesheet, so the chrome
+   (copy button, language label, Shiki token colors) would otherwise render
+   as raw, unstyled text — the "___mermaid" / "___ts" artifact. Provide it
+   here, scoped under .bt-content. */
+
+/* Fenced-code wrapper is the visual container */
+.bt-content div[class*='language-'] {
+  position: relative;
   margin: 1.2em 0;
-  padding: 16px 18px;
+  border: 1px solid var(--bt-border);
   border-radius: 8px;
   background: var(--bt-code-bg);
   overflow-x: auto;
+  direction: ltr;
+  text-align: left;
+}
+
+/* The <pre> inside the wrapper is transparent; the wrapper holds the box */
+.bt-content div[class*='language-'] pre {
+  margin: 0;
+  padding: 16px 18px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.bt-content div[class*='language-'] code {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--bt-code-text);
+  background: transparent;
+  padding: 0;
+  white-space: pre;
+  tab-size: 4;
+}
+
+/* Shiki dual-theme token colors (light vs. dark) */
+.bt-content .vp-code span,
+.bt-content .shiki span {
+  color: var(--shiki-light, inherit);
+}
+.dark .bt-content .vp-code span,
+.dark .bt-content .shiki span {
+  color: var(--shiki-dark, inherit);
+}
+
+/* Language label (top-right corner) */
+.bt-content div[class*='language-'] > span.lang {
+  position: absolute;
+  top: 4px;
+  right: 10px;
+  z-index: 2;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  user-select: none;
+  color: var(--bt-text-soft);
+  transition: opacity 0.25s;
+}
+
+/* Copy button */
+.bt-content div[class*='language-'] > button.copy {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  width: 36px;
+  height: 36px;
+  padding: 0;
   border: 1px solid var(--bt-border);
+  border-radius: 6px;
+  background-color: var(--bt-bg-soft);
+  background-image: var(--vp-icon-copy);
+  background-position: 50%;
+  background-size: 18px;
+  background-repeat: no-repeat;
+  opacity: 0;
+  cursor: pointer;
+  transition:
+    opacity 0.25s,
+    background-color 0.25s,
+    border-color 0.25s;
+}
+
+.bt-content div[class*='language-']:hover > button.copy,
+.bt-content div[class*='language-'] > button.copy:focus {
+  opacity: 1;
+}
+
+.bt-content div[class*='language-'] > button.copy:hover,
+.bt-content div[class*='language-'] > button.copy.copied {
+  border-color: var(--bt-brand);
+  background-color: var(--bt-bg);
+}
+
+.bt-content div[class*='language-'] > button.copy.copied {
+  background-image: var(--vp-icon-copied);
+  border-radius: 0 6px 6px 0;
+}
+
+/* "Copied" tooltip that pops out to the left of the button */
+.bt-content div[class*='language-'] > button.copy.copied::before {
+  content: 'Copied';
+  position: absolute;
+  right: 100%;
+  top: -1px;
+  display: flex;
+  align-items: center;
+  height: 36px;
+  margin-right: 1px;
+  padding: 0 10px;
+  border: 1px solid var(--bt-brand);
+  border-right: 0;
+  border-radius: 6px 0 0 6px;
+  background-color: var(--bt-bg);
+  color: var(--bt-text);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Hide the language label while the copy button is visible */
+.bt-content div[class*='language-']:hover > button.copy + span.lang,
+.bt-content div[class*='language-'] > button.copy:focus + span.lang {
+  opacity: 0;
+}
+
+/* Mermaid diagrams (rendered by vitepress-plugin-mermaid's <Mermaid>) */
+.bt-content .mermaid {
+  margin: 1.2em 0;
+  padding: 16px;
+  text-align: center;
+  background: var(--bt-code-bg);
+  border: 1px solid var(--bt-border);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.bt-content .mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Bare <pre> fallback (fences without a language) */
+.bt-content pre {
+  margin: 1.2em 0;
+  padding: 16px 18px;
+  border: 1px solid var(--bt-border);
+  border-radius: 8px;
+  background: var(--bt-code-bg);
+  overflow-x: auto;
 }
 
 .bt-content pre code {

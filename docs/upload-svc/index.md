@@ -4,10 +4,6 @@ This document describes how to use the `@bioturing-org/upload-svc` package
 (the browser & Node TypeScript SDK for **upload-svc**) to perform chunked,
 resumable, integrity-verified file and folder uploads.
 
-> The package lives at [`packages/upload-svc-client`](../package.json). For the
-> full reference, see the in-repo [`README.md`](../README.md). This guide
-> focuses on practical, end-to-end usage patterns.
-
 ---
 
 ## Table of contents
@@ -298,10 +294,6 @@ const result = await uploader.uploadFile(file, {
 The `storageKey` is automatically namespaced with the uploader's `appId`, so
 the same local file uploaded to different applications does not share a resume
 record.
-
-> **Note:** Resume is supported for `uploadFile()` only. `uploadFolder()`
-> streams lazily and does not persist a resume record (the `resume` option is
-> ignored for folder uploads).
 
 Re-uploading any part is safe — `put_part` is idempotent.
 
