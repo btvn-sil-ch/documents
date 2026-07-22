@@ -1,247 +1,144 @@
-## 📦 Installation
+# Overview
 
-```bash
-# Install zavier
-npm install zavier
-
-# Install peer dependencies (required)
-npm install @deck.gl/core @deck.gl/layers \
-            @luma.gl/core @luma.gl/engine @luma.gl/shadertools @luma.gl/webgl
-```
+`@bioturing-org/zavier` is a TypeScript-first library of custom **deck.gl** layers, pixel sources, and React hooks for high-performance 2D spatial-omics and microscopy visualization. It extends deck.gl with rendering primitives tuned for large multi-channel Zarr images, segmentation polygons, scatter plots of millions of cells, and interactive annotation overlays.
 
 ---
 
-## ✨ Features
+## Why zavier?
 
-- 🧩 **Multi-resolution pyramid** loading (Zarr NGFF-compatible)
-- 🎨 **Multi-channel rendering** with real-time LUT / gamma adjustment
-- ⚡ **Smooth pan and zoom** for images up to 60k × 60k pixels
-- 🔁 **General transformation** support (translation, rotation, scaling, TPS,...)
-- 🧠 **Async, on-demand tile loading** via [Zarrita](https://github.com/manzt/zarrita.js/)
-- 🧱 **TypeScript-first** with full unit and performance tests
-- 🧪 CI/CD integrated and benchmarked for consistency
+Standard deck.gl layers are general-purpose and work well for geospatial data, but spatial-omics has different demands:
+
+- **Very large images** (up to 60k × 60k pixels) stored as multi-resolution Zarr pyramids.
+- **Multi-channel rendering** with per-channel color, contrast, and gamma applied on the GPU.
+- **Millions of scatter points** (cells / molecules) that need density-aware level-of-detail (LOD) sampling.
+- **Segmentation polygons** with shared fill + boundary geometry and viewport culling.
+- **General transformations** (affine, thin-plate-spline, composed) for image and point alignment.
+
+zavier provides these as drop-in deck.gl layers so you can compose them inside any deck.gl `Deck` or `DeckGL` instance.
 
 ---
 
-# @bioturing/zavier
+## Two import paths
 
-Custom deck.gl layers for advanced data visualization.
+The package exposes two subpath imports:
 
-## Installation
+```ts
+// Core (vanilla TS) — works in any deck.gl app, React not required
+import { ZarrImageLayer, ScatterplotShapeLayer } from '@bioturing-org/zavier';
+
+// React integration — hooks + spatial-index manager
+import { useViewportBounds, useLODThreshold } from '@bioturing-org/zavier/react';
+```
+
+The root path re-exports everything from both core and react, so `import { ... } from '@bioturing-org/zavier'` is also valid.
+
+---
+
+## What you can render
+
+### Layers
+
+| Layer | Class | Use it for |
+|-------|-------|------------|
+| [Zarr image](layers/zarr-image.md) | `ZarrImageLayer` | Streaming multi-channel OME-Zarr / Zarr NGFF images with tiled LOD pyramid loading |
+| [Polygon](layers/polygon.md) | `PolygonLayer` | Segmentation polygon fill + boundary with culling and transformations |
+| [ScatterplotShape](layers/scatter-plot-shape.md) | `ScatterplotShapeLayer` | High-throughput circle/square scatter with density-based max radius and GPU LOD sampling |
+| [Capped line](layers/capped-line.md) | `CappedLineLayer` | Lines with rectangular capped endpoints (annotation / measurement) |
+| [Shape marker](layers/shape-marker.md) | `ShapeMarkerLayer` | Rotatable, billboarded circle/square markers (handles, anchors) |
+
+Supporting zarr-image sub-layers are also exported: `ShaderImageLayer`, `AxisLayer`, `ScaleBarLayer`, and `DetailWithOverviewLayer` (a composite that renders a detail view plus a minimap overview with a viewport bounding box).
+
+Each layer is a standard deck.gl `Layer` and is constructed with `new LayerName({ ...props })` and added to the `layers` array of your `Deck`/`DeckGL` instance.
+
+### Pixel sources
+
+A `PixelSource` is the abstraction zavier uses to feed pixel data into `ZarrImageLayer`:
+
+| Source | Description |
+|--------|-------------|
+| `ZarritaPixelSource` | Reads OME-Zarr / Zarr NGFF pyramids via Zarrita with flexible axis ordering |
+| `InMemoryPixelSource` | Wraps an in-memory `TypedArray` and auto-builds a downsampled pyramid |
+| `CachedPixelSource` / `CachedPixelSourceFactory` | LRU memory cache wrapping any `PixelSource` |
+| `ChannelManager` | Packs active-channel color + contrast into a GPU texture |
+
+Loaders:
+
+- `loadOmeZarrMetadata(url)` — fetch and standardize OME-Zarr metadata.
+- `loadOmeZarr({ metadata, recomputeScale, options })` — build a `ZarritaPixelSource` from metadata.
+
+All pixel data flows through a single standard dimension order `[t, c, z, y, x]`, so layers never need to care about the on-disk axis layout. Missing dimensions are padded with size 1.
+
+### Transformations
+
+zavier ships a small transformation framework implementing the `Transformation` interface:
+
+| Class | Description |
+|-------|-------------|
+| `IdentityTransformation` | No-op transform |
+| `AffineTransformation` | Linear affine (matrix + translation) from a `@math.gl/core` `Matrix4` |
+| `TPSTransformation` | Thin-plate-spline non-rigid transform |
+| `CompositeTransformation` | Chain multiple transforms |
+| `reconstructAlignmentTransformation(...)` | Rebuild a transform from serialized alignment params |
+
+Layers accept a `transformation?: Transformation` prop and apply it to positions/bounds on the CPU before upload. This is how image↔point alignment is expressed.
+
+---
+
+## Utilities
+
+These helpers are reusable independently of the layers:
+
+- **Color** — `hexToRGB`, `rgbToHex`, `interpolateColor`, `getColorFromRange`, `createColorScale`, `DEFAULT_COLOR_RANGES`, `adjustBrightness`, `getLuminance`, `getContrastingTextColor`.
+- **Geometry** — `distance2D/3D`, `getBoundingBox2D/3D`, `getBoundingBoxCenter2D`, `generateCirclePoints`, `resolveAccessor`.
+- **Math** — `clamp`, `lerp`, `mapRange`, `normalize`, `smoothstep`, `easing`, `degreesToRadians`, `radiansToDegrees`.
+- **Layer helpers** — `applyTransformationToPoint`, `applyTransformationToPositions`, `computeBoundsFromPositions`, `transformBoundsWithMatrix`, `injectBoundsCallback`.
+- **DeckGL view helpers** — `computeView`, `getViewState`, `makeBoundingBox`, `computeBoundingBox`, `combineBoundingBox`, `calculateOverviewPosition`.
+- **Shaders** — `shaderUtils`, `shaderModule` (reusable GLSL).
+- **Errors** — `ZavierError`, `CacheError`, `LayerError`, `PixelSourceError`, `wrapError`.
+- **Scheduler** — `MultiStreamLifoScheduler`, `LifoStream`, `withRetry` (used for tile loading concurrency control).
+- **Pixel chunk** — `isContiguous`, `makeContiguous`, `extractChannelSlice`, `extractChannelSlices`.
+- **Scalebar** — `sizeToMeters`, `snapValue`, `TARGETS`, `SI_PREFIXES`.
+- **Tileset** — `getVisibleTiles`, `getVisibleTilesAtLevel`.
+
+---
+
+## React integration
+
+The React entry point is optional and adds three hooks plus a spatial-index manager. See [React hooks](react-hooks.md) for full details.
+
+| Export | Kind | Description |
+|--------|------|-------------|
+| `useViewportBounds` | hook | World-space bounding box of the current orthographic viewport (with padding) |
+| `useLODThreshold` | hook | Density-aware LOD threshold (0–1) for `ScatterplotShapeLayer` GPU sampling |
+| `useSpatialIndexManager` | hook + context | Access a shared `SpatialIndexManager` via React context |
+| `SpatialIndex` | class | KDBush-backed 2D spatial index with page-aware index mapping |
+| `SpatialIndexManager` | class | Cache of `SpatialIndex` instances keyed by string ID |
+
+React is a **peer dependency marked optional** — the core library works without React, and you only need `react`/`react-dom` installed if you use the `@bioturing-org/zavier/react` subpath.
+
+---
+
+## Peer dependencies
+
+zavier builds on top of deck.gl and luma.gl:
 
 ```bash
-npm install @bioturing/zavier
-# or
-yarn add @bioturing/zavier
+npm install @deck.gl/core@9.1.15 @deck.gl/layers@9.1.15 \
+            @luma.gl/core@9.1.10 @luma.gl/engine@9.1.10 \
+            @luma.gl/shadertools@9.1.10 @luma.gl/webgl@9.1.10 \
+            kdbush@>=4.0.2
 ```
 
-## Peer Dependencies
+Add `react` and `react-dom` (≥18) only if you use the React hooks.
 
-This library requires the following peer dependencies:
+---
 
-```bash
-npm install @deck.gl/core @deck.gl/layers @luma.gl/core @luma.gl/engine @luma.gl/shadertools @luma.gl/webgl
-```
+## Where to go next
 
-## Usage
-
-### Import Types
-
-```typescript
-import type {
-  ColorRGBA,
-  ColorRGB,
-  Position2D,
-  Position3D,
-  Position,
-  BoundingBox2D,
-  Accessor,
-  ColorRange,
-} from '@bioturing/zavier';
-```
-
-### Color Utilities
-
-```typescript
-import {
-  hexToRGB,
-  rgbToHex,
-  interpolateColor,
-  getColorFromRange,
-  createColorScale,
-  DEFAULT_COLOR_RANGES,
-} from '@bioturing/zavier';
-
-// Convert hex to RGB
-const red = hexToRGB('#ff0000'); // [255, 0, 0]
-
-// Interpolate between colors
-const orange = interpolateColor([255, 0, 0], [255, 255, 0], 0.5); // [255, 127, 0]
-
-// Get color from range
-const color = getColorFromRange(DEFAULT_COLOR_RANGES.heatmap, 0.5);
-
-// Create a color scale function
-const colorScale = createColorScale(DEFAULT_COLOR_RANGES.viridis, 0, 100);
-const valueColor = colorScale(50);
-```
-
-### Geometry Utilities
-
-```typescript
-import {
-  distance2D,
-  getBoundingBox2D,
-  getBoundingBoxCenter2D,
-  generateCirclePoints,
-  resolveAccessor,
-} from '@bioturing/zavier';
-
-// Calculate distance
-const dist = distance2D([0, 0], [3, 4]); // 5
-
-// Get bounding box
-const bbox = getBoundingBox2D([[0, 0], [10, 5], [5, 10]]);
-// [0, 0, 10, 10]
-
-// Get center
-const center = getBoundingBoxCenter2D([0, 0, 100, 50]); // [50, 25]
-
-// Generate circle points
-const points = generateCirclePoints([0, 0], 10, 8);
-
-// Resolve accessor
-const getValue = resolveAccessor;
-const value1 = getValue(42, {}); // 42
-const value2 = getValue((d: { x: number }) => d.x, { x: 10 }); // 10
-```
-
-### Math Utilities
-
-```typescript
-import {
-  clamp,
-  lerp,
-  mapRange,
-  normalize,
-  smoothstep,
-  easing,
-} from '@bioturing/zavier';
-
-// Clamp value
-const clamped = clamp(150, 0, 100); // 100
-
-// Linear interpolation
-const interpolated = lerp(0, 100, 0.5); // 50
-
-// Map range
-const mapped = mapRange(50, 0, 100, 0, 1); // 0.5
-
-// Normalize
-const normalized = normalize(50, 0, 100); // 0.5
-
-// Smooth step
-const smooth = smoothstep(0, 100, 50); // 0.5
-
-// Easing functions
-const easedValue = easing.easeInOutCubic(0.5);
-```
-
-### Shader Utilities
-
-```typescript
-import { shaderUtils, shaderModule } from '@bioturing/zavier';
-
-// Use with luma.gl shader modules
-// shaderUtils contains GLSL utility functions
-```
-
-## API Reference
-
-### Types
-
-| Type | Description |
-|------|-------------|
-| `ColorRGBA` | RGBA color tuple with values 0-255 |
-| `ColorRGB` | RGB color tuple with values 0-255 |
-| `Position2D` | 2D position coordinate [x, y] |
-| `Position3D` | 3D position coordinate [x, y, z] |
-| `Position` | 2D or 3D position |
-| `BoundingBox2D` | 2D bounding box [minX, minY, maxX, maxY] |
-| `BoundingBox3D` | 3D bounding box [minX, minY, minZ, maxX, maxY, maxZ] |
-| `Accessor<DataT, ReturnT>` | Accessor function or value |
-| `ColorRange` | Array of RGB colors for gradients |
-
-### Color Utilities
-
-| Function | Description |
-|----------|-------------|
-| `hexToRGB(hex)` | Convert hex color to RGB |
-| `rgbToHex(rgb)` | Convert RGB to hex string |
-| `rgbToRGBA(rgb, alpha)` | Convert RGB to RGBA |
-| `interpolateColor(c1, c2, t)` | Interpolate between two colors |
-| `getColorFromRange(range, t)` | Get color from color range |
-| `createColorScale(range, min, max)` | Create color scale function |
-| `adjustBrightness(color, factor)` | Adjust color brightness |
-| `getLuminance(color)` | Calculate color luminance |
-| `getContrastingTextColor(bgColor)` | Get black or white text color |
-
-### Geometry Utilities
-
-| Function | Description |
-|----------|-------------|
-| `distance2D(p1, p2)` | Distance between 2D points |
-| `distance3D(p1, p2)` | Distance between 3D points |
-| `midpoint(p1, p2)` | Midpoint between positions |
-| `getBoundingBox2D(positions)` | Calculate 2D bounding box |
-| `getBoundingBox3D(positions)` | Calculate 3D bounding box |
-| `pointInBoundingBox2D(point, bbox)` | Check if point is in bbox |
-| `getBoundingBoxCenter2D(bbox)` | Get bbox center |
-| `getBoundingBoxSize2D(bbox)` | Get bbox width and height |
-| `normalizePosition(pos, bbox)` | Normalize position to [0,1] |
-| `generateCirclePoints(center, radius, n)` | Generate circle points |
-| `resolveAccessor(accessor, data)` | Resolve accessor function or value |
-
-### Math Utilities
-
-| Function | Description |
-|----------|-------------|
-| `clamp(value, min, max)` | Clamp value to range |
-| `lerp(a, b, t)` | Linear interpolation |
-| `mapRange(value, inMin, inMax, outMin, outMax)` | Map value between ranges |
-| `getRange(values)` | Get min and max from array |
-| `normalize(value, min, max)` | Normalize to [0, 1] |
-| `mean(values)` | Calculate mean |
-| `standardDeviation(values)` | Calculate std dev |
-| `range(start, end, step)` | Generate number sequence |
-| `approximatelyEqual(a, b, epsilon)` | Check approximate equality |
-| `smoothstep(edge0, edge1, x)` | Smooth step function |
-| `easing` | Object with easing functions |
-| `degreesToRadians(degrees)` | Convert degrees to radians |
-| `radiansToDegrees(radians)` | Convert radians to degrees |
-
-## Development
-
-```bash
-# Install dependencies
-yarn install
-
-# Build library
-yarn build
-
-# Run tests
-yarn test
-
-# Type check
-yarn typecheck
-
-# Lint
-yarn lint
-
-# Format
-yarn format
-```
-
-## License
-
-MIT
+- [Getting started](getting-started.md) — install, set up a `DeckGL` canvas, and render your first image + scatter.
+- [Zarr image layer](layers/zarr-image.md) — streaming OME-Zarr imagery.
+- [Polygon layer](layers/polygon.md) — segmentation polygons.
+- [ScatterplotShape layer](layers/scatter-plot-shape.md) — high-throughput scatter.
+- [Capped line layer](layers/capped-line.md) — capped annotation lines.
+- [Shape marker layer](layers/shape-marker.md) — rotatable markers.
+- [React hooks](react-hooks.md) — viewport bounds, LOD, and spatial indexing.
