@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
-import { useRoute, useData } from 'vitepress';
+import { useRoute, useData, withBase } from 'vitepress';
 
 const route = useRoute();
-const { theme } = useData();
+const { theme, site } = useData();
+
+const base = site.value.base.replace(/\/$/, '');
+function stripBase(p: string): string {
+  return base && p.startsWith(base) ? p.slice(base.length) || '/' : p;
+}
+const routePath = computed(() => stripBase(route.path));
 
 const isDark = ref(false);
 
@@ -45,7 +51,7 @@ function normPath(p: string): string {
 }
 
 function isItemActive(link: string): boolean {
-  return normPath(route.path) === normPath(link);
+  return normPath(routePath.value) === normPath(link);
 }
 
 interface TocItem {
@@ -80,7 +86,7 @@ function buildTocFromDom() {
 }
 
 const currentDocs = computed(() => {
-  const path = normPath(route.path);
+  const path = normPath(routePath.value);
   const key = Object.keys(sidebars).find(
     (k) => path === normPath(k) || path.startsWith(normPath(k) + '/'),
   );
@@ -91,7 +97,7 @@ const currentDocs = computed(() => {
 const currentToc = computed(() => tocItems.value);
 
 const pageTitle = computed(() => {
-  const path = route.path;
+  const path = routePath.value;
   if (path === '/') return 'Home';
   const match = nav.find((n) => {
     const link = n.link.replace(/\/$/, '');
@@ -233,7 +239,7 @@ function onTocClick(e: Event, link: string) {
           <span class="bt-menu-icon" />
         </button>
 
-        <a href="/" class="bt-logo">
+        <a :href="withBase('/')" class="bt-logo">
           <span class="bt-logo__mark">⬢</span>
           <span class="bt-logo__text">BioTuring</span>
         </a>
@@ -242,12 +248,12 @@ function onTocClick(e: Event, link: string) {
           <a
             v-for="item in nav"
             :key="item.link"
-            :href="item.link"
+            :href="withBase(item.link)"
             class="bt-nav__link"
             :class="{
               'bt-nav__link--active':
-                route.path === item.link ||
-                (item.link !== '/' && route.path.startsWith(item.link)),
+                routePath === item.link ||
+                (item.link !== '/' && routePath.startsWith(item.link)),
             }"
           >
             {{ item.text }}
@@ -286,7 +292,7 @@ function onTocClick(e: Event, link: string) {
                 :class="{
                   'bt-sidebar__link--active': isItemActive(item.link),
                 }"
-                :href="item.link"
+                :href="withBase(item.link)"
               >
                 {{ item.text }}
               </a>
@@ -305,7 +311,7 @@ function onTocClick(e: Event, link: string) {
       <main class="bt-main">
         <div class="bt-content">
           <div class="bt-breadcrumb">
-            <a href="/">Home</a>
+            <a :href="withBase('/')">Home</a>
             <span class="bt-breadcrumb__sep">/</span>
             <span>{{ pageTitle }}</span>
           </div>
