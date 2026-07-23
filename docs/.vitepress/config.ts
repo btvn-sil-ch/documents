@@ -5,7 +5,7 @@ export default withMermaid(
   defineConfig({
     title: 'BioTuring Library',
     description: 'Documentation for the JavaScript library',
-    base: '/',
+    base: '/documents/',
     cleanUrls: true,
     ignoreDeadLinks: true,
 
