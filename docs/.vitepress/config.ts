@@ -42,7 +42,21 @@ export default withMermaid(
         '/zavier/': [
           {
             text: '@bioturing-org/zavier',
-            items: [{ text: 'Overview', link: '/zavier/' }],
+            items: [
+              { text: 'Overview', link: '/zavier/' },
+              { text: 'Getting started', link: '/zavier/getting-started' },
+              { text: 'React hooks', link: '/zavier/react-hooks' },
+            ],
+          },
+          {
+            text: 'Layers',
+            items: [
+              { text: 'Zarr image', link: '/zavier/layers/zarr-image' },
+              { text: 'ScatterplotShape', link: '/zavier/layers/scatter-plot-shape' },
+              { text: 'Polygon', link: '/zavier/layers/polygon' },
+              { text: 'Capped line', link: '/zavier/layers/capped-line' },
+              { text: 'Shape marker', link: '/zavier/layers/shape-marker' },
+            ],
           },
         ],
       },

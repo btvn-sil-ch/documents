@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
-import { useRoute } from 'vitepress';
+import { useRoute, useData } from 'vitepress';
 
 const route = useRoute();
+const { theme } = useData();
 
 const isDark = ref(false);
 
@@ -28,29 +29,24 @@ function toggleSidebar() {
   sidebarOpen.value = !sidebarOpen.value;
 }
 
-const nav = [
-  { text: 'Home', link: '/' },
-  { text: 'upload-svc', link: '/upload-svc/' },
-  { text: 'zavier', link: '/zavier/' },
-];
+const nav = (theme.value.nav ?? []) as { text: string; link: string }[];
 
-const sidebars: Record<
+const sidebars = (theme.value.sidebar ?? {}) as Record<
   string,
   { text: string; items: { text: string; link: string }[] }[]
-> = {
-  '/upload-svc/': [
-    {
-      text: '@bioturing-org/upload-svc',
-      items: [{ text: 'Overview', link: '/upload-svc/' }],
-    },
-  ],
-  '/zavier/': [
-    {
-      text: '@bioturing-org/zavier',
-      items: [{ text: 'Overview', link: '/zavier/' }],
-    },
-  ],
-};
+>;
+
+// Normalize a route/link by dropping a single trailing slash (except for the
+// root "/"). Used so that "/zavier/" and "/zavier" compare equal, and so the
+// index ("Overview") link only highlights on the index page itself rather
+// than matching every page under that prefix.
+function normPath(p: string): string {
+  return p.length > 1 && p.endsWith('/') ? p.slice(0, -1) : p;
+}
+
+function isItemActive(link: string): boolean {
+  return normPath(route.path) === normPath(link);
+}
 
 interface TocItem {
   text: string;
@@ -84,8 +80,10 @@ function buildTocFromDom() {
 }
 
 const currentDocs = computed(() => {
-  const path = route.path;
-  const key = Object.keys(sidebars).find((k) => path.startsWith(k));
+  const path = normPath(route.path);
+  const key = Object.keys(sidebars).find(
+    (k) => path === normPath(k) || path.startsWith(normPath(k) + '/'),
+  );
   if (!key) return [];
   return sidebars[key];
 });
@@ -95,7 +93,11 @@ const currentToc = computed(() => tocItems.value);
 const pageTitle = computed(() => {
   const path = route.path;
   if (path === '/') return 'Home';
-  const match = nav.find((n) => path.startsWith(n.link.replace(/\/$/, '')));
+  const match = nav.find((n) => {
+    const link = n.link.replace(/\/$/, '');
+    if (!link) return false;
+    return path.startsWith(link);
+  });
   return match ? match.text : 'Docs';
 });
 
@@ -139,7 +141,6 @@ function onTocScroll() {
     scrollActiveSlug.value = '';
     return;
   }
-
 
   let current = headings[0].link;
   for (const h of headings) {
@@ -198,13 +199,13 @@ function onTocClick(e: Event, link: string) {
   if (suppressTimer) clearTimeout(suppressTimer);
 
   const headerOffset = 56;
-  const top = target.getBoundingClientRect().top + window.scrollY - headerOffset;
+  const top =
+    target.getBoundingClientRect().top + window.scrollY - headerOffset;
 
   window.scrollTo({
     top: top,
     behavior: 'smooth',
   });
-
 
   history.replaceState(null, '', link);
 
@@ -283,10 +284,7 @@ function onTocClick(e: Event, link: string) {
               <a
                 class="bt-sidebar__link"
                 :class="{
-                  'bt-sidebar__link--active':
-                    route.path === item.link ||
-                    (item.link !== '/' &&
-                      route.path.startsWith(item.link)),
+                  'bt-sidebar__link--active': isItemActive(item.link),
                 }"
                 :href="item.link"
               >

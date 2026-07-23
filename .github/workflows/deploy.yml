@@ -1,5 +1,7 @@
 name: Deploy VitePress to GitHub Pages
 
+# Auto-run when source code is merged (pushed) into `main`,
+# plus allow manual triggers from the Actions tab.
 on:
   push:
     branches: [main]
@@ -10,6 +12,7 @@ permissions:
   pages: write
   id-token: write
 
+# Only one deployment at a time; don't cancel an in-flight deploy.
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -21,17 +24,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        # Reads the pinned version from `packageManager` in package.json (pnpm@11.15.1)
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: 22
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build VitePress
-        run: npm run docs:build
+        run: pnpm run docs:build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

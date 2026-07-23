@@ -103,12 +103,41 @@ server auto-detects which case applies from the file paths.
 
 ## Install
 
-Install from GitHub Packages:
+`@bioturing-org/upload-svc` is published to **GitHub Packages**, so npm needs to
+know where to find the `@bioturing-org` scope and how to authenticate before it
+can install the package.
+
+### 1. Create a personal access token
+
+Create a classic personal access token with the `read:packages` scope at
+<https://github.com/settings/tokens>, then export it as `NODE_AUTH_TOKEN`:
+
+```bash
+export NODE_AUTH_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+```
+
+### 2. Configure the registry
+
+Create an `.npmrc` (project-level, or `~/.npmrc` for global use) with:
+
+```ini
+@bioturing-org:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+```
+
+> The `${NODE_AUTH_TOKEN}` placeholder is expanded by npm at install time, so
+> the token is read from the environment and never has to be committed to the
+> file. Make sure the variable is set in the shell (or CI secrets) before running
+> the install command.
+
+### 3. Install the package
 
 ```bash
 npm install @bioturing-org/upload-svc
 # or
 yarn add @bioturing-org/upload-svc
+# or
+pnpm add @bioturing-org/upload-svc
 ```
 
 The SDK ships a dual ESM/CJS build (`dist/index.js` + `dist/index.cjs`) with
@@ -128,7 +157,7 @@ import { Uploader } from '@bioturing-org/upload-svc';
 
 const uploader = new Uploader({
   baseUrl: 'https://domain.bioturing.com', // application base URL, no trailing slash
-  appId: 'spatialx',                       // embedded in the token-endpoint path
+  appId: 'appId',                       // embedded in the token-endpoint path
   algo: 'blake3',                          // 'blake3' | 'sha256' — must match the server
   chunkSize: 1024 * 1024,                  // part size in bytes (server max: 16 MiB)
   concurrency: 8,                          // in-flight part PUTs (default 8)
